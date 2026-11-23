@@ -1,0 +1,8 @@
+{
+  "name": "FidelSub — Amharic Subtitle Studio",
+  "description": "Generate, edit, sync, and export Amharic (Ge'ez script) subtitles from video and audio files in SRT, WebVTT, ASS, and TXT formats.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

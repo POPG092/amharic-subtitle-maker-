@@ -1,0 +1,170 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedEmail() && request.auth.token.email == 'djelawebshet@gmail.com';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserAccount(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'email', 'displayName', 'photoURL',
+          'accessStatus', 'videoLimit', 'usedCount', 'note',
+          'createdAt', 'updatedAt', 'lastSeenAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'photoURL',
+          'accessStatus', 'videoLimit', 'usedCount', 'note',
+          'createdAt', 'updatedAt', 'lastSeenAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.uid == userId &&
+        data.email is string &&
+        data.email.size() >= 3 &&
+        data.email.size() <= 254 &&
+        data.displayName is string &&
+        data.displayName.size() <= 120 &&
+        data.photoURL is string &&
+        data.photoURL.size() <= 500 &&
+        data.accessStatus in ['pending', 'approved', 'blocked'] &&
+        data.videoLimit is int &&
+        data.videoLimit >= -1 &&
+        data.videoLimit <= 10000 &&
+        data.usedCount is int &&
+        data.usedCount >= 0 &&
+        data.usedCount <= 100000 &&
+        data.note is string &&
+        data.note.size() <= 240 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        data.lastSeenAt is timestamp;
+    }
+
+    function isValidUsageLog(data) {
+      return data.keys().hasAll([
+          'userId', 'userEmail', 'fileName', 'mediaKind',
+          'sourceMode', 'cueCount', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'userEmail', 'fileName', 'mediaKind',
+          'sourceMode', 'cueCount', 'createdAt'
+        ]) &&
+        isValidId(data.userId) &&
+        data.userEmail is string &&
+        data.userEmail.size() >= 3 &&
+        data.userEmail.size() <= 254 &&
+        data.fileName is string &&
+        data.fileName.size() >= 1 &&
+        data.fileName.size() <= 200 &&
+        data.mediaKind in ['video', 'audio'] &&
+        data.sourceMode in ['auto', 'amharic', 'translate'] &&
+        data.cueCount is int &&
+        data.cueCount >= 0 &&
+        data.cueCount <= 10000 &&
+        data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isValidId(userId) &&
+        isVerifiedEmail() &&
+        isOwner(userId) &&
+        isValidUserAccount(incoming(), userId) &&
+        incoming().uid == request.auth.uid &&
+        incoming().email == request.auth.token.email &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        incoming().lastSeenAt == request.time &&
+        (
+          (isAdmin() && incoming().accessStatus == 'approved' && incoming().videoLimit == -1 && incoming().usedCount == 0) ||
+          (incoming().accessStatus == 'pending' && incoming().videoLimit == 0 && incoming().usedCount == 0 && incoming().note == '')
+        );
+
+      allow update: if isValidId(userId) &&
+        isVerifiedEmail() &&
+        isValidUserAccount(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'accessStatus', 'videoLimit', 'usedCount', 'note', 'displayName', 'photoURL', 'updatedAt', 'lastSeenAt'
+            ])
+          ) ||
+          (
+            isOwner(userId) &&
+            incoming().lastSeenAt == request.time &&
+            (
+              // Action 1: Sync profile metadata on sign-in
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'lastSeenAt'])
+              ) ||
+              // Action 2: Record 1 subtitle generation usage when approved and under limit
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly(['usedCount', 'updatedAt', 'lastSeenAt']) &&
+                existing().accessStatus == 'approved' &&
+                incoming().usedCount == existing().usedCount + 1 &&
+                (existing().videoLimit == -1 || existing().usedCount < existing().videoLimit)
+              )
+            )
+          )
+        );
+
+      allow delete: if isValidId(userId) && isAdmin() && userId != request.auth.uid;
+    }
+
+    match /usageLogs/{logId} {
+      allow get: if isValidId(logId) && isVerifiedEmail() && (isAdmin() || existing().userId == request.auth.uid);
+      allow list: if isVerifiedEmail() && (isAdmin() || resource.data.userId == request.auth.uid);
+
+      allow create: if isValidId(logId) &&
+        isVerifiedEmail() &&
+        isValidUsageLog(incoming()) &&
+        incoming().userId == request.auth.uid &&
+        incoming().userEmail == request.auth.token.email &&
+        incoming().createdAt == request.time &&
+        (
+          isAdmin() ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accessStatus == 'approved'
+        );
+
+      allow update: if false;
+      allow delete: if isValidId(logId) && isAdmin();
+    }
+  }
+}

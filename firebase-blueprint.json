@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Signed-in user profile and subtitle generation access quota controlled by the app owner.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address of the signed-in user.",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name from Google Sign-In.",
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile avatar URL.",
+          "maxLength": 500
+        },
+        "accessStatus": {
+          "type": "string",
+          "description": "Owner-controlled access state.",
+          "enum": ["pending", "approved", "blocked"]
+        },
+        "videoLimit": {
+          "type": "integer",
+          "description": "Maximum allowed subtitle generations (-1 for unlimited, 0 for none, 1+ for temporary quota)."
+        },
+        "usedCount": {
+          "type": "integer",
+          "description": "Total subtitle generations consumed by this user."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional owner note for this user's access.",
+          "maxLength": 240
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last profile or quota update timestamp."
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Most recent sign-in or session activity timestamp."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "displayName",
+        "photoURL",
+        "accessStatus",
+        "videoLimit",
+        "usedCount",
+        "note",
+        "createdAt",
+        "updatedAt",
+        "lastSeenAt"
+      ]
+    },
+    "UsageLog": {
+      "title": "UsageLog",
+      "description": "Record of a video or audio subtitle generation performed by a signed-in user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the user who generated subtitles.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Email of the user who generated subtitles.",
+          "maxLength": 254
+        },
+        "fileName": {
+          "type": "string",
+          "description": "Uploaded media filename.",
+          "maxLength": 200
+        },
+        "mediaKind": {
+          "type": "string",
+          "description": "Type of media processed.",
+          "enum": ["video", "audio"]
+        },
+        "sourceMode": {
+          "type": "string",
+          "description": "Transcription or translation mode used.",
+          "enum": ["auto", "amharic", "translate"]
+        },
+        "cueCount": {
+          "type": "integer",
+          "description": "Number of Amharic subtitle cues produced."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of generation."
+        }
+      },
+      "required": [
+        "userId",
+        "userEmail",
+        "fileName",
+        "mediaKind",
+        "sourceMode",
+        "cueCount",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "User sign-in profiles and per-user video generation limits managed by the owner."
+    },
+    "/usageLogs/{logId}": {
+      "schema": { "$ref": "#/entities/UsageLog" },
+      "description": "Audit trail of media subtitle generations per signed-in user."
+    }
+  }
+}
