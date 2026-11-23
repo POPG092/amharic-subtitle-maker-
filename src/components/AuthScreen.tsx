@@ -6,7 +6,6 @@ interface AuthScreenProps {
   isSupabaseConfigured: boolean;
   isSubmitting: boolean;
   authError: string | null;
-  authNotice: string | null;
   onSignInEmail: (email: string, password: string) => Promise<void>;
   onSignUpEmail: (email: string, password: string) => Promise<void>;
   onSignInGoogle: () => Promise<void>;
@@ -18,7 +17,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   isSupabaseConfigured,
   isSubmitting,
   authError,
-  authNotice,
   onSignInEmail,
   onSignUpEmail,
   onSignInGoogle,
@@ -158,15 +156,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   className="mt-4 rounded-lg border border-rose-500/40 bg-rose-950/50 px-3.5 py-2.5 text-xs text-rose-200"
                 >
                   {displayError}
-                </p>
-              )}
-
-              {authNotice && (
-                <p
-                  role="status"
-                  className="mt-4 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3.5 py-2.5 text-xs text-emerald-200"
-                >
-                  {authNotice}
                 </p>
               )}
 

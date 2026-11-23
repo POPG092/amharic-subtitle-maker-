@@ -64,11 +64,17 @@ export async function signUpWithEmailPassword(email: string, password: string) {
   const { data, error } = await client.auth.signUp({
     email,
     password,
-    options: {
-      emailRedirectTo: window.location.origin,
-    },
   });
   if (error) throw error;
+  if (!data.session) {
+    const { data: signInData, error: signInErr } = await client.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (!signInErr && signInData.session) {
+      return signInData;
+    }
+  }
   return data;
 }
 

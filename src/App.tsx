@@ -76,7 +76,6 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   // Plan Expiration & Upgrade Modal State
@@ -210,7 +209,6 @@ export default function App() {
   const handleSignInEmail = async (email: string, password: string) => {
     setAuthSubmitting(true);
     setAuthError(null);
-    setAuthNotice(null);
     try {
       await signInWithEmailPassword(email, password);
     } catch (err) {
@@ -223,12 +221,11 @@ export default function App() {
   const handleSignUpEmail = async (email: string, password: string) => {
     setAuthSubmitting(true);
     setAuthError(null);
-    setAuthNotice(null);
     try {
       const data = await signUpWithEmailPassword(email, password);
       if (!data.session) {
-        setAuthNotice(
-          'Account created! Check your email inbox to confirm your address before signing in.',
+        setAuthError(
+          'Account created, but email confirmation is still enabled in your Supabase Auth settings. Turn off "Confirm email" in Supabase Authentication → Providers → Email for instant sign-up.',
         );
       }
     } catch (err) {
@@ -241,7 +238,6 @@ export default function App() {
   const handleSignInGoogle = async () => {
     setAuthSubmitting(true);
     setAuthError(null);
-    setAuthNotice(null);
     try {
       await signInWithGoogleOAuth();
     } catch (err) {
@@ -253,7 +249,6 @@ export default function App() {
   const handleSignOut = async () => {
     setErrorMsg(null);
     setAuthError(null);
-    setAuthNotice(null);
     await signOutSupabase();
   };
 
@@ -729,7 +724,6 @@ export default function App() {
               isSupabaseConfigured={isSupabaseConfigured}
               isSubmitting={authSubmitting}
               authError={authError}
-              authNotice={authNotice}
               onSignInEmail={handleSignInEmail}
               onSignUpEmail={handleSignUpEmail}
               onSignInGoogle={handleSignInGoogle}
